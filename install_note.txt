@@ -1,0 +1,29 @@
+virtualenv --system-site-packages -p python2.7 ./venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install tensorflow==1.4.0
+cd Tensor/frustum-pointnets/
+sh mayavi/mayavi_install.sh 
+?pip install vtk
+?pip install python-vtk
+sudo apt-get install python-qt4 python-qt4-gl
+sudo apt-get install python-setuptools python-numpy python-configobj
+sudo pip install mayavi
+python mayavi/test_drawline.py #success
+pip install opencv-python
+pip install Pillow
+pip install matplotlib
+pip install scipy
+
+
+cudnn:
+https://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html
+https://developer.nvidia.com/rdp/cudnn-download
+
+pip install tensorflow-gpu==1.4.0#causes import tensorflow failure
+Install:
+https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&target_distro=Ubuntu&target_version=1804&target_type=debnetwork
+
+
+tutorial:
+in order to import matplotlib.pyplot as plt, you have to sudo apt-get install python-tk

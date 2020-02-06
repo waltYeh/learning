@@ -44,14 +44,13 @@ def print_accuracy(session, accuracy, feed_dict_test):
     print("Accuracy on test-set: {0:.1%}".format(acc))
 def print_confusion_matrix(data, session, y_pred_cls, feed_dict_test):
     # Get the true classifications for the test-set.
-    cls_true = data.y_test_cls
+    cls_true = data.test.cls
     
     # Get the predicted classifications for the test-set.
     cls_pred = session.run(y_pred_cls, feed_dict=feed_dict_test)
 
     # Get the confusion matrix using sklearn.
-    cm = confusion_matrix(y_true=cls_true,
-                          y_pred=cls_pred)
+    cm = confusion_matrix(y_true=cls_true, y_pred=cls_pred)
 
     # Print the confusion matrix as text.
     print(cm)
@@ -132,8 +131,9 @@ def plot_weights(session, weights):
     plt.show()
 def main():
     data=input_data.read_data_sets("data/MNIST/", one_hot=True)
-
+    print data.test.labels[0:5]
     data.test.cls = np.array([label.argmax() for label in data.test.labels])
+    print data.test.cls[0:5]
     images = data.test.images[0:9]
     #Get the true classes 
     cls_true = data.test.cls[0:9]
@@ -158,15 +158,22 @@ def main():
     feed_dict_test = {x: data.test.images,
                   y_true: data.test.labels,
                   y_true_cls: data.test.cls}
-    print_accuracy(session, accuracy, feed_dict_test)
-    plot_example_errors(data, session, correct_prediction, y_pred_cls, feed_dict_test)
-    optimize(optimizer, data, session, x, y_true, num_iterations=1)
-    print_accuracy(session, accuracy, feed_dict_test)
-    plot_example_errors(data, session, correct_prediction, y_pred_cls, feed_dict_test)
     plot_weights(session, weights)
+    print_accuracy(session, accuracy, feed_dict_test)
+#    plot_example_errors(data, session, correct_prediction, y_pred_cls, feed_dict_test)
+    optimize(optimizer, data, session, x, y_true, num_iterations=1)
+    plot_weights(session, weights)
+    print_accuracy(session, accuracy, feed_dict_test)
+#    plot_example_errors(data, session, correct_prediction, y_pred_cls, feed_dict_test)
+    
 #    session.run(tf.ini)
     optimize(optimizer, data, session, x, y_true, num_iterations=9)
+    plot_weights(session, weights)
     print_accuracy(session, accuracy, feed_dict_test)
-    plot_example_errors(data, session, correct_prediction, y_pred_cls, feed_dict_test)
+#    plot_example_errors(data, session, correct_prediction, y_pred_cls, feed_dict_test)
+    
 
+    print_confusion_matrix(data, session, y_pred_cls, feed_dict_test)
+
+    session.close()
 main()
