@@ -5,6 +5,10 @@ from sklearn.metrics import confusion_matrix
 import time
 from datetime import timedelta
 import math
+from tensorflow.python.keras.models import Sequential
+from tensorflow.python.keras.layers import InputLayer, Input
+from tensorflow.python.keras.layers import Reshape, MaxPooling2D
+from tensorflow.python.keras.layers import Conv2D, Dense, Flatten
 # Config of NN
 # Convolutional Layer 1.
 filter_size1 = 5          # Convolution filters are 5 x 5 pixels.
@@ -20,6 +24,7 @@ fc_size = 128             # Number of neurons in fully-connected layer.
 img_size=28
 img_size_flat=img_size*img_size
 img_shape=(img_size, img_size)
+img_shape_full=(img_size, img_size,1)
 num_classes=10
 batch_size = 100
 # Number of colour channels for the images: 1 channel for gray-scale.
@@ -33,6 +38,16 @@ train_batch_size = 64
 # Split the test-set into smaller batches of this size.
 test_batch_size = 256
 total_iterations = 0
+path_model = 'model_functional.keras'
+using_seq_model = False
+using_fun_model = False
+reload_model = True
+def plot_image(image):
+    plt.imshow(image.reshape(img_shape),
+               interpolation='nearest',
+               cmap='binary')
+
+    plt.show()
 def plot_images(images, cls_true, cls_pred=None):
     assert len(images) == len(cls_true) == 9
     
@@ -215,7 +230,11 @@ def plot_example_errors(data, cls_pred, correct):
 
     # Get the true classes for those images.
     cls_true = data.test.labels[incorrect]
-    
+    # print(len(images))
+    # print(len(cls_true))
+    # print(len(cls_pred))
+    # print(correct)
+    # print(incorrect)
     # Plot the first 9 images.
     plot_images(images=images[0:9],
                 cls_true=cls_true[0:9],
@@ -317,6 +336,71 @@ def print_test_accuracy(data, session, x, y_true, y_pred_cls,
     if show_confusion_matrix:
         print("Confusion Matrix:")
         plot_confusion_matrix(data, cls_pred=cls_pred)
+def plot_conv_weights(weights, input_channel=0):
+    # Get the lowest and highest values for the weights.
+    # This is used to correct the colour intensity across
+    # the images so they can be compared with each other.
+    w_min = np.min(weights)
+    w_max = np.max(weights)
+
+    # Number of filters used in the conv. layer.
+    num_filters = weights.shape[3]
+
+    # Number of grids to plot.
+    # Rounded-up, square-root of the number of filters.
+    num_grids = int(math.ceil(math.sqrt(num_filters)))
+    
+    # Create figure with a grid of sub-plots.
+    fig, axes = plt.subplots(num_grids, num_grids)
+
+    # Plot all the filter-weights.
+    for i, ax in enumerate(axes.flat):
+        # Only plot the valid filter-weights.
+        if i<num_filters:
+            # Get the weights for the i'th filter of the input channel.
+            # See new_conv_layer() for details on the format
+            # of this 4-dim tensor.
+            img = weights[:, :, input_channel, i]
+
+            # Plot image.
+            ax.imshow(img, vmin=w_min, vmax=w_max,
+                      interpolation='nearest', cmap='seismic')
+        
+        # Remove ticks from the plot.
+        ax.set_xticks([])
+        ax.set_yticks([])
+    
+    # Ensure the plot is shown correctly with multiple plots
+    # in a single Notebook cell.
+    plt.show()
+def plot_conv_output(values):
+    # Number of filters used in the conv. layer.
+    num_filters = values.shape[3]
+
+    # Number of grids to plot.
+    # Rounded-up, square-root of the number of filters.
+    num_grids = int(math.ceil(math.sqrt(num_filters)))
+    
+    # Create figure with a grid of sub-plots.
+    fig, axes = plt.subplots(num_grids, num_grids)
+
+    # Plot the output images of all the filters.
+    for i, ax in enumerate(axes.flat):
+        # Only plot the images for valid filters.
+        if i<num_filters:
+            # Get the output image of using the i'th filter.
+            img = values[0, :, :, i]
+
+            # Plot image.
+            ax.imshow(img, interpolation='nearest', cmap='binary')
+        
+        # Remove ticks from the plot.
+        ax.set_xticks([])
+        ax.set_yticks([])
+    
+    # Ensure the plot is shown correctly with multiple plots
+    # in a single Notebook cell.
+    plt.show()
 def main():
     from tensorflow.examples.tutorials.mnist import input_data
     data=input_data.read_data_sets("data/MNIST/", one_hot=True)
@@ -326,64 +410,223 @@ def main():
     # Get the first images from the test-set.
     data.test.cls = np.array([label.argmax() for label in data.test.labels])
 
-
+#   images = data.x_test[0:9]
     images = data.test.images[0:9]
     #Get the true classes 
+#   cls_true = data.y_test_cls[0:9]
     cls_true = data.test.cls[0:9]
     # Plot the images and labels using our helper-function above.
 #    plot_images(images=images, cls_true=cls_true)
 
-    x = tf.placeholder(tf.float32, shape=[None, img_size_flat], name='x')
-    x_image = tf.reshape(x, [-1, img_size, img_size, num_channels])
-    y_true = tf.placeholder(tf.float32, shape=[None, num_classes], name='y_true')
-    y_true_cls = tf.argmax(y_true, axis=1)
-    layer_conv1, weights_conv1 = new_conv_layer(input=x_image,
-                   num_input_channels=num_channels,
-                   filter_size=filter_size1,
-                   num_filters=num_filters1,
-                   use_pooling=True)
-    print (layer_conv1)
+    if using_seq_model:
+
+        model = Sequential()
+        # Add an input layer which is similar to a feed_dict in TensorFlow.
+        # Note that the input-shape must be a tuple containing the image-size.
+        model.add(InputLayer(input_shape=(img_size_flat,)))
+        # The input is a flattened array with 784 elements,
+        # but the convolutional layers expect images with shape (28, 28, 1)
+        model.add(Reshape(img_shape_full))
+        # x = tf.placeholder(tf.float32, shape=[None, img_size_flat], name='x')
+        # x_image = tf.reshape(x, [-1, img_size, img_size, num_channels])
+        # y_true = tf.placeholder(tf.float32, shape=[None, num_classes], name='y_true')
+        # y_true_cls = tf.argmax(y_true, axis=1)
 
 
-    layer_conv2, weights_conv2 = new_conv_layer(input=layer_conv1,
-                   num_input_channels=num_filters1,
-                   filter_size=filter_size2,
-                   num_filters=num_filters2,
-                   use_pooling=True)
-    print (layer_conv2)
-    layer_flat, num_features = flatten_layer(layer_conv2)
-    print (layer_flat)
-    print (num_features)
-    layer_fc1 = new_fc_layer(input=layer_flat,
-                         num_inputs=num_features,
-                         num_outputs=fc_size,
-                         use_relu=True)
-    print (layer_fc1)
-    layer_fc2 = new_fc_layer(input=layer_fc1,
-                         num_inputs=fc_size,
-                         num_outputs=num_classes,
-                         use_relu=False)
-    print(layer_fc2)
-    y_pred = tf.nn.softmax(layer_fc2)
-    y_pred_cls = tf.argmax(y_pred, axis=1)
-    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=layer_fc2,
-                                                        labels=y_true)
-    cost = tf.reduce_mean(cross_entropy)
-    optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(cost)
-    correct_prediction = tf.equal(y_pred_cls, y_true_cls)
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+        # First convolutional layer with ReLU-activation and max-pooling.
+        model.add(Conv2D(kernel_size=5, strides=1, filters=16, padding='same',
+                     activation='relu', name='layer_conv1'))
+        model.add(MaxPooling2D(pool_size=2, strides=2))
+        # layer_conv1, weights_conv1 = new_conv_layer(input=x_image,
+        #                num_input_channels=num_channels,
+        #                filter_size=filter_size1,
+        #                num_filters=num_filters1,
+        #                use_pooling=True)
+        # print (layer_conv1)
 
-    session = tf.Session()
-    session.run(tf.global_variables_initializer())
-    global total_iterations
-    total_iterations = 0
+        # Second convolutional layer with ReLU-activation and max-pooling.
+        model.add(Conv2D(kernel_size=5, strides=1, filters=36, padding='same',
+                     activation='relu', name='layer_conv2'))
+        model.add(MaxPooling2D(pool_size=2, strides=2))
 
-    print_test_accuracy(data, session, x, y_true, y_pred_cls, False, False)
-    optimize(optimizer, data, session, x, y_true, accuracy, num_iterations=1)
-    print_test_accuracy(data, session, x, y_true, y_pred_cls, False, False)
-    optimize(optimizer, data, session, x, y_true, accuracy, num_iterations=99)
-    print_test_accuracy(data, session, x, y_true, y_pred_cls, False, True)
-    optimize(optimizer, data, session, x, y_true, accuracy, num_iterations=900)
-    print_test_accuracy(data, session, x, y_true, y_pred_cls, False, True)
-    session.close()
+        # layer_conv2, weights_conv2 = new_conv_layer(input=layer_conv1,
+        #                num_input_channels=num_filters1,
+        #                filter_size=filter_size2,
+        #                num_filters=num_filters2,
+        #                use_pooling=True)
+        # print (layer_conv2)
+
+        # Flatten the 4-rank output of the convolutional layers
+        # to 2-rank that can be input to a fully-connected / dense layer.
+        model.add(Flatten())
+
+        # layer_flat, num_features = flatten_layer(layer_conv2)
+        # print (layer_flat)
+        # print (num_features)
+
+        # First fully-connected / dense layer with ReLU-activation.
+        model.add(Dense(128, activation='relu'))
+        # layer_fc1 = new_fc_layer(input=layer_flat,
+        #                      num_inputs=num_features,
+        #                      num_outputs=fc_size,
+        #                      use_relu=True)
+        # print (layer_fc1)
+
+        # Last fully-connected / dense layer with softmax-activation
+        # for use in classification.
+        model.add(Dense(num_classes, activation='softmax'))
+        # layer_fc2 = new_fc_layer(input=layer_fc1,
+        #                      num_inputs=fc_size,
+        #                      num_outputs=num_classes,
+        #                      use_relu=False)
+        # print(layer_fc2)
+        # y_pred = tf.nn.softmax(layer_fc2)
+        # y_pred_cls = tf.argmax(y_pred, axis=1)
+        # cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=layer_fc2,
+        #                                                     labels=y_true)
+        # cost = tf.reduce_mean(cross_entropy)
+        from tensorflow.python.keras.optimizers import Adam
+
+        optimizer = Adam(lr=1e-3)
+        model.compile(optimizer=optimizer,
+                  loss='categorical_crossentropy',
+                  metrics=['accuracy'])
+
+        # optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(cost)
+        # correct_prediction = tf.equal(y_pred_cls, y_true_cls)
+        # accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+
+        # session = tf.Session()
+        # session.run(tf.global_variables_initializer())
+        model.fit(x=data.train.images,
+              y=data.train.labels,
+              epochs=1, batch_size=128)
+        result = model.evaluate(x=data.test.images,
+                            y=data.test.labels)
+        print('')
+        for name, value in zip(model.metrics_names, result):
+            print(name, value)
+            print("{0}: {1:.2%}".format(model.metrics_names[1], result[1]))
+        
+
+        # `save_model` requires h5py
+        model.save(path_model)
+
+
+        del model
+    if using_fun_model:
+        # Create an input layer which is similar to a feed_dict in TensorFlow.
+        # Note that the input-shape must be a tuple containing the image-size.
+        inputs = Input(shape=(img_size_flat,))
+
+        # Variable used for building the Neural Network.
+        net = inputs
+
+        # The input is an image as a flattened array with 784 elements.
+        # But the convolutional layers expect images with shape (28, 28, 1)
+        net = Reshape(img_shape_full)(net)
+
+        # First convolutional layer with ReLU-activation and max-pooling.
+        net = Conv2D(kernel_size=5, strides=1, filters=16, padding='same',
+                     activation='relu', name='layer_conv1')(net)
+        net = MaxPooling2D(pool_size=2, strides=2)(net)
+
+        # Second convolutional layer with ReLU-activation and max-pooling.
+        net = Conv2D(kernel_size=5, strides=1, filters=36, padding='same',
+                     activation='relu', name='layer_conv2')(net)
+        net = MaxPooling2D(pool_size=2, strides=2)(net)
+
+        # Flatten the output of the conv-layer from 4-dim to 2-dim.
+        net = Flatten()(net)
+
+        # First fully-connected / dense layer with ReLU-activation.
+        net = Dense(128, activation='relu')(net)
+
+        # Last fully-connected / dense layer with softmax-activation
+        # so it can be used for classification.
+        net = Dense(num_classes, activation='softmax')(net)
+
+        # Output of the Neural Network.
+        outputs = net
+
+        from tensorflow.python.keras.models import Model
+        model2 = Model(inputs=inputs, outputs=outputs)
+        model2.compile(optimizer='rmsprop',
+               loss='categorical_crossentropy',
+               metrics=['accuracy'])
+        model2.fit(x=data.train.images,
+           y=data.train.labels,
+           epochs=1, batch_size=128)
+        result = model2.evaluate(x=data.test.images,
+                         y=data.test.labels)
+        print('')
+        for name, value in zip(model2.metrics_names, result):
+            print(name, value)
+            print("{0}: {1:.2%}".format(model2.metrics_names[1], result[1]))
+        
+
+        # `save_model` requires h5py
+        model2.save(path_model)
+
+    if reload_model:
+
+        from tensorflow.python.keras.models import load_model
+        model3 = load_model(path_model)
+
+
+
+
+        #images = data.x_test[0:9]
+        images = data.test.images[0:9]
+        #cls_true = data.y_test_cls[0:9]
+        cls_true = data.test.labels[0:9]
+        y_pred = model3.predict(x=images)
+        cls_pred = np.argmax(y_pred, axis=1)
+        plot_images(images=images,
+                cls_true=cls_true,
+                cls_pred=cls_pred)
+
+        y_pred = model3.predict(x=data.test.images)
+        cls_pred = np.argmax(y_pred, axis=1)
+        cls_true = data.test.cls
+        correct = (cls_true == cls_pred)
+        plot_example_errors(data, cls_pred=cls_pred, correct=correct)
+
+        model3.summary()
+        layer_input = model3.layers[0]
+        layer_conv1 = model3.layers[2]
+        print(layer_conv1)
+        layer_conv2 = model3.layers[4]
+        weights_conv1 = layer_conv1.get_weights()[0]
+        print(weights_conv1.shape)
+        plot_conv_weights(weights=weights_conv1, input_channel=0)
+        weights_conv2 = layer_conv2.get_weights()[0]
+        plot_conv_weights(weights=weights_conv2, input_channel=0)
+        image1 = data.test.images[0]
+        plot_image(image1)
+
+        from tensorflow.python.keras import backend as K
+        output_conv1 = K.function(inputs=[layer_input.input],
+                          outputs=[layer_conv1.output])
+        layer_output1 = output_conv1([[image1]])[0]
+        print(layer_output1.shape)
+        plot_conv_output(values=layer_output1)
+
+        from tensorflow.python.keras.models import Model
+        output_conv2 = Model(inputs=layer_input.input,
+                     outputs=layer_conv2.output)
+        layer_output2 = output_conv2.predict(np.array([image1]))
+        layer_output2.shape
+        plot_conv_output(values=layer_output2)
+    # global total_iterations
+    # total_iterations = 0
+
+    # print_test_accuracy(data, session, x, y_true, y_pred_cls, False, False)
+    # optimize(optimizer, data, session, x, y_true, accuracy, num_iterations=1)
+    # print_test_accuracy(data, session, x, y_true, y_pred_cls, False, False)
+    # optimize(optimizer, data, session, x, y_true, accuracy, num_iterations=99)
+    # print_test_accuracy(data, session, x, y_true, y_pred_cls, False, True)
+    # optimize(optimizer, data, session, x, y_true, accuracy, num_iterations=900)
+    # print_test_accuracy(data, session, x, y_true, y_pred_cls, False, True)
+    # session.close()
 main()

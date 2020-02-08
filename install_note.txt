@@ -14,7 +14,7 @@ pip install opencv-python
 pip install Pillow
 pip install matplotlib
 pip install scipy
-
+pip install h5py
 
 cudnn:
 https://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html
