@@ -8,6 +8,7 @@ sh mayavi/mayavi_install.sh
 ?pip install python-vtk
 sudo apt-get install python-qt4 python-qt4-gl
 sudo apt-get install python-setuptools python-numpy python-configobj
+pip install scikit-learn
 sudo pip install mayavi
 python mayavi/test_drawline.py #success
 pip install opencv-python
@@ -15,6 +16,7 @@ pip install Pillow
 pip install matplotlib
 pip install scipy
 pip install h5py
+
 
 cudnn:
 https://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html
@@ -27,3 +29,9 @@ https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&t
 
 tutorial:
 in order to import matplotlib.pyplot as plt, you have to sudo apt-get install python-tk
+
+anaconda:
+https://docs.anaconda.com/anaconda/install/linux/
+https://www.anaconda.com/distribution/#linux
+python3.7
+https://linuxize.com/post/how-to-install-python-3-7-on-ubuntu-18-04/

@@ -38,10 +38,13 @@ train_batch_size = 64
 # Split the test-set into smaller batches of this size.
 test_batch_size = 256
 total_iterations = 0
-path_model = 'model_functional.keras'
+path_model = 'model_seq.keras'
 using_seq_model = False
 using_fun_model = False
 reload_model = True
+reading_seq_model = True
+reading_fun_model = False
+
 def plot_image(image):
     plt.imshow(image.reshape(img_shape),
                interpolation='nearest',
@@ -404,6 +407,8 @@ def plot_conv_output(values):
 def main():
     from tensorflow.examples.tutorials.mnist import input_data
     data=input_data.read_data_sets("data/MNIST/", one_hot=True)
+#    data_train = tfds.load(name="mnist", split="train")
+#    data_test = tfds.load(name="mnist", split="test")
     print("Size of:")
     print("- Training-set:\t\t{}".format(len(data.train.labels)))
     print("- Test-set:\t\t{}".format(data.test.labels))
@@ -416,7 +421,7 @@ def main():
 #   cls_true = data.y_test_cls[0:9]
     cls_true = data.test.cls[0:9]
     # Plot the images and labels using our helper-function above.
-#    plot_images(images=images, cls_true=cls_true)
+    plot_images(images=images, cls_true=cls_true)
 
     if using_seq_model:
 
@@ -485,7 +490,7 @@ def main():
         # cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=layer_fc2,
         #                                                     labels=y_true)
         # cost = tf.reduce_mean(cross_entropy)
-        from tensorflow.python.keras.optimizers import Adam
+        from tensorflow.keras.optimizers import Adam
 
         optimizer = Adam(lr=1e-3)
         model.compile(optimizer=optimizer,
@@ -593,10 +598,18 @@ def main():
         plot_example_errors(data, cls_pred=cls_pred, correct=correct)
 
         model3.summary()
-        layer_input = model3.layers[0]
-        layer_conv1 = model3.layers[2]
-        print(layer_conv1)
-        layer_conv2 = model3.layers[4]
+#       Attention: the functional and sequential models are different in
+#       layers, for sequential ones:
+        if reading_seq_model:
+            layer_input = model3.layers[0]
+            layer_conv1 = model3.layers[1]
+            print(layer_conv1)
+            layer_conv2 = model3.layers[3]
+        elif reading_fun_model:
+            layer_input = model3.layers[0]
+            layer_conv1 = model3.layers[2]
+            print(layer_conv1)
+            layer_conv2 = model3.layers[4]
         weights_conv1 = layer_conv1.get_weights()[0]
         print(weights_conv1.shape)
         plot_conv_weights(weights=weights_conv1, input_channel=0)
@@ -605,14 +618,16 @@ def main():
         image1 = data.test.images[0]
         plot_image(image1)
 
-        from tensorflow.python.keras import backend as K
-        output_conv1 = K.function(inputs=[layer_input.input],
-                          outputs=[layer_conv1.output])
-        layer_output1 = output_conv1([[image1]])[0]
-        print(layer_output1.shape)
-        plot_conv_output(values=layer_output1)
+        # from tensorflow.keras import backend as K
+        # output_conv1 = K.function(inputs=[layer_input.input],
+        #                   outputs=[layer_conv1.output])
+        # print(output_conv1)
+        # print(output_conv1([[image1]]))
+        # layer_output1 = output_conv1([[image1]])[0]
+        # print(layer_output1.shape)
+        # plot_conv_output(values=layer_output1)
 
-        from tensorflow.python.keras.models import Model
+        from tensorflow.keras.models import Model
         output_conv2 = Model(inputs=layer_input.input,
                      outputs=layer_conv2.output)
         layer_output2 = output_conv2.predict(np.array([image1]))
