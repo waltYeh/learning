@@ -35,3 +35,22 @@ https://docs.anaconda.com/anaconda/install/linux/
 https://www.anaconda.com/distribution/#linux
 python3.7
 https://linuxize.com/post/how-to-install-python-3-7-on-ubuntu-18-04/
+conda update -n base -c defaults conda
+conda create -n tensorflow_gpuenv tensorflow-gpu
+conda activate tensorflow_gpuenv
+pip install --upgrade pip
+sudo apt-get install python-setuptools python-numpy python-configobj
+pip install opencv-python
+pip install Pillow
+pip install matplotlib
+pip install scipy
+pip install h5py
+sudo apt-get install build-essential python3-dev python3-setuptools                      python3-numpy python3-scipy                      libatlas-dev libatlas3gf-base
+?sudo apt-get install python-sklearn
+
+?sudo apt-get install python3-sklearn
+
+pip install scikit-learn
+
+pip install tensorflow-datasets
+

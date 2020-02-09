@@ -131,9 +131,9 @@ def plot_weights(session, weights):
     plt.show()
 def main():
     data=input_data.read_data_sets("data/MNIST/", one_hot=True)
-    print data.test.labels[0:5]
+    print (data.test.labels[0:5])
     data.test.cls = np.array([label.argmax() for label in data.test.labels])
-    print data.test.cls[0:5]
+    print (data.test.cls[0:5])
     images = data.test.images[0:9]
     #Get the true classes 
     cls_true = data.test.cls[0:9]
@@ -151,7 +151,7 @@ def main():
     optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.5).minimize(cost)
     correct_prediction = tf.equal(y_pred_cls, y_true_cls)
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-    print "ready"
+    print ("ready")
     session = tf.Session()
     session.run(tf.global_variables_initializer())
 #    session.run(tf.initialize_all_variables())
